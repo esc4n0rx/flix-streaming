@@ -1,22 +1,23 @@
-"use client"
+// hooks/use-auth.tsx
+"use client";
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import { useRouter } from "next/navigation"
-import { getUserInfo } from "@/lib/api"
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { getUserInfo } from "@/lib/api";
 
 interface User {
-  id: string
-  name: string
-  email?: string
-  imageUrl?: string
+  id: string;
+  name: string;
+  email?: string;
+  imageUrl?: string;
 }
 
 interface AuthContextType {
-  user: User | null
-  isAuthenticated: boolean
-  isLoading: boolean
-  login: (token: string, user: User) => void
-  logout: () => void
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: (token: string, user: User) => void;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -25,56 +26,60 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   login: () => {},
   logout: () => {},
-})
+});
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const router = useRouter()
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
 
+  // Modificado para evitar problemas de hidratação
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const token = localStorage.getItem("jellyfin_token")
+        const token = localStorage.getItem("jellyfin_token");
+        const storedUser = localStorage.getItem("jellyfin_user");
 
-        if (!token) {
-          setIsLoading(false)
-          return
+        if (!token || !storedUser) {
+          setIsLoading(false);
+          return;
         }
 
-        const userInfo = await getUserInfo()
-
-        if (userInfo) {
-          setUser({
-            id: userInfo.id,
-            name: userInfo.name,
-            email: userInfo.email,
-            imageUrl: userInfo.imageUrl,
-          })
+        // Usar dados do localStorage primeiro para evitar problemas de hidratação
+        setUser(JSON.parse(storedUser));
+        
+        // Depois verificar com o servidor
+        try {
+          await getUserInfo();
+          // Se chegou aqui, o token é válido
+        } catch (error) {
+          // Token inválido, fazer logout
+          localStorage.removeItem("jellyfin_token");
+          localStorage.removeItem("jellyfin_user");
+          setUser(null);
         }
       } catch (error) {
-        localStorage.removeItem("jellyfin_token")
-        localStorage.removeItem("jellyfin_user")
+        console.error("Auth check error:", error);
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
+    };
 
-    checkAuth()
-  }, [])
+    checkAuth();
+  }, []);
 
   const login = (token: string, userData: User) => {
-    localStorage.setItem("jellyfin_token", token)
-    localStorage.setItem("jellyfin_user", JSON.stringify(userData))
-    setUser(userData)
-  }
+    localStorage.setItem("jellyfin_token", token);
+    localStorage.setItem("jellyfin_user", JSON.stringify(userData));
+    setUser(userData);
+  };
 
   const logout = () => {
-    localStorage.removeItem("jellyfin_token")
-    localStorage.removeItem("jellyfin_user")
-    setUser(null)
-    router.push("/login")
-  }
+    localStorage.removeItem("jellyfin_token");
+    localStorage.removeItem("jellyfin_user");
+    setUser(null);
+    router.push("/login");
+  };
 
   return (
     <AuthContext.Provider
@@ -88,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     >
       {children}
     </AuthContext.Provider>
-  )
+  );
 }
 
-export const useAuth = () => useContext(AuthContext)
+export const useAuth = () => useContext(AuthContext);

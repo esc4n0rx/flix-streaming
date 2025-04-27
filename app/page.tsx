@@ -1,13 +1,23 @@
-import { redirect } from "next/navigation"
-import { cookies } from "next/headers"
+// app/page.tsx (modificado)
+"use client"
+
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/hooks/use-auth"
 
 export default function Home() {
-  const cookieStore = cookies()
-  const token = cookieStore.get("jellyfin_token")
+  const { isAuthenticated, isLoading } = useAuth()
+  const router = useRouter()
 
-  if (!token) {
-    redirect("/login")
-  }
+  useEffect(() => {
+    if (!isLoading) {
+      if (!isAuthenticated) {
+        router.push("/login")
+      } else {
+        router.push("/home")
+      }
+    }
+  }, [isAuthenticated, isLoading, router])
 
-  return redirect("/home")
+  return null // Ou um componente de loading
 }

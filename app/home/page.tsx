@@ -1,3 +1,4 @@
+// app/home/page.tsx
 "use client"
 
 import { useEffect, useState } from "react"
@@ -31,19 +32,10 @@ export default function HomePage() {
     const fetchData = async () => {
       try {
         setIsLoading(true)
-
+    
         // Get user info to verify authentication
         await getUserInfo()
-
-        // Get continue watching items
-        const continueWatchingItems = await getItems({
-          sortBy: "DatePlayed",
-          sortOrder: "Descending",
-          filters: "IsResumable",
-          limit: 10,
-        })
-        setContinueWatching(continueWatchingItems)
-
+    
         // Get popular movies
         const movies = await getItems({
           includeItemTypes: "Movie",
@@ -51,38 +43,58 @@ export default function HomePage() {
           sortOrder: "Ascending",
           limit: 20,
         })
-        setPopularMovies(movies)
-
+        setPopularMovies(movies || [])
+    
         // Get featured series
         const series = await getItems({
           includeItemTypes: "Series",
-          sortBy: "SortName",
+          sortBy: "SortName", 
           sortOrder: "Ascending",
           limit: 20,
         })
-        setFeaturedSeries(series)
-
-        // Set a random featured item from movies or series
-        const allItems = [...movies, ...series]
+        setFeaturedSeries(series || [])
+    
+        // Get continue watching items (depois das outras requisições)
+        const continueWatchingItems = await getItems({
+          sortBy: "DatePlayed",
+          sortOrder: "Descending",
+          filters: "IsResumable",
+          limit: 10,
+        })
+        setContinueWatching(continueWatchingItems || [])
+    
+        // Set a random featured item from movies ou series
+        const allItems = [...(movies || []), ...(series || [])]
         if (allItems.length > 0) {
-          const randomIndex = Math.floor(Math.random() * allItems.length)
-          setFeaturedItem(allItems[randomIndex])
+          // Garantir que itens sem imagens não sejam selecionados como destaque
+          const itemsWithImages = allItems.filter(item => 
+            (item.ImageTags?.Primary || item.BackdropImageTags?.length > 0)
+          )
+          
+          if (itemsWithImages.length > 0) {
+            const randomIndex = Math.floor(Math.random() * itemsWithImages.length)
+            setFeaturedItem(itemsWithImages[randomIndex])
+          } else if (allItems.length > 0) {
+            const randomIndex = Math.floor(Math.random() * allItems.length)
+            setFeaturedItem(allItems[randomIndex])
+          }
         }
       } catch (error) {
+        console.error("Error loading content:", error)
         toast({
           title: "Error loading content",
-          description: "Failed to load content from Jellyfin",
+          description: `Failed to load content from Jellyfin: ${error instanceof Error ? error.message : 'Unknown error'}`,
           variant: "destructive",
         })
-        logout()
       } finally {
         setIsLoading(false)
       }
     }
-
+    
     fetchData()
   }, [isAuthenticated, router, toast, logout])
 
+  // Exibir tela de loading enquanto carrega dados
   if (!isAuthenticated) {
     return null
   }
@@ -94,15 +106,26 @@ export default function HomePage() {
       {isLoading ? (
         <ContentSkeleton />
       ) : (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
+        <motion.div 
+          initial={{ opacity: 0 }} 
+          animate={{ opacity: 1 }} 
+          transition={{ duration: 0.5 }}
+          className="pb-12"
+        >
           {featuredItem && <FeaturedContent item={featuredItem} />}
 
           <div className="container mx-auto px-4 py-8 space-y-12">
-            {continueWatching.length > 0 && <ContentCarousel title="Continue Watching" items={continueWatching} />}
+            {popularMovies.length > 0 && (
+              <ContentCarousel title="Popular Movies" items={popularMovies} />
+            )}
 
-            {popularMovies.length > 0 && <ContentCarousel title="Popular Movies" items={popularMovies} />}
+            {featuredSeries.length > 0 && (
+              <ContentCarousel title="Featured Series" items={featuredSeries} />
+            )}
 
-            {featuredSeries.length > 0 && <ContentCarousel title="Featured Series" items={featuredSeries} />}
+            {continueWatching.length > 0 && (
+              <ContentCarousel title="Continue Watching" items={continueWatching} />
+            )}
           </div>
         </motion.div>
       )}

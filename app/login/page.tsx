@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
@@ -11,9 +10,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { loginUser } from "@/lib/auth"
-import { Logo } from "@/components/logo"
-import { ParticlesBackground } from "@/components/particles-background"
-import { FilmStrip } from "@/components/film-strip"
+import { AuroraLogo } from "@/components/aurora-logo"
+import { MovieBackground } from "@/components/movie-background"
+import { useAuth } from "@/hooks/use-auth"
 
 export default function LoginPage() {
   const [username, setUsername] = useState("")
@@ -22,6 +21,7 @@ export default function LoginPage() {
   const [showForm, setShowForm] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
+  const { login } = useAuth()
 
   useEffect(() => {
     // Delay showing the form for a smoother entrance
@@ -37,17 +37,19 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      await loginUser(username, password)
+      const authData = await loginUser(username, password)
+      
+      // Use the auth context
+      login(authData.token, authData.user)
 
-      // Show success animation before redirecting
       toast({
         title: "Login bem-sucedido",
         description: "Redirecionando para a página inicial...",
       })
 
-      // Delay redirect for animation
+      // Use replace instead of push to prevent navigation issues
       setTimeout(() => {
-        router.push("/home")
+        router.replace("/home")
       }, 1000)
     } catch (error) {
       toast({
@@ -90,12 +92,8 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center overflow-hidden relative">
-      {/* Animated background with particles */}
-      <ParticlesBackground />
-
-      {/* Animated film strips */}
-      <FilmStrip position="left" />
-      <FilmStrip position="right" />
+      {/* Animated background with TMDb popular movies */}
+      <MovieBackground />
 
       {/* Radial gradient overlay */}
       <div className="absolute inset-0 bg-gradient-radial from-violet-900/20 via-gray-900/60 to-gray-950/90 z-10" />
@@ -119,7 +117,7 @@ export default function LoginPage() {
               }}
               className="flex justify-center mb-8"
             >
-              <Logo className="h-20 w-auto" />
+              <AuroraLogo className="h-24 w-auto" />
             </motion.div>
 
             <motion.div variants={containerVariants} initial="hidden" animate="visible">
@@ -128,7 +126,7 @@ export default function LoginPage() {
 
                 <CardHeader>
                   <motion.div variants={itemVariants}>
-                    <CardTitle className="text-2xl text-center text-white">Bem-vindo ao Flix</CardTitle>
+                    <CardTitle className="text-2xl text-center text-white">Bem-vindo ao Aurora+</CardTitle>
                   </motion.div>
                   <motion.div variants={itemVariants}>
                     <CardDescription className="text-center text-gray-400">
