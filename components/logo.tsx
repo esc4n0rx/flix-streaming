@@ -31,7 +31,7 @@ export function Logo({ className = "" }: LogoProps) {
       transition: {
         duration: 2,
         repeat: Number.POSITIVE_INFINITY,
-        repeatType: "mirror",
+        repeatType: "mirror" as const,
       },
     },
   }
@@ -53,7 +53,7 @@ export function Logo({ className = "" }: LogoProps) {
 
       {/* Logo com animação de letras */}
       <div className="relative flex">
-        {"Flix".split("").map((letter, i) => (
+        {"Aurora+".split("").map((letter, i) => (
           <motion.span
             key={i}
             custom={i}
